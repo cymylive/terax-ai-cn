@@ -63,7 +63,6 @@ async fn open_settings_window(app: tauri::AppHandle, tab: Option<String>) -> Res
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         // Skip restoring VISIBLE — frontend calls window.show() after first
         // paint so the user never sees a transparent window-shadow flash on
         // Windows/Linux.
