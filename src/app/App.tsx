@@ -45,7 +45,7 @@ import {
 import { PreviewStack, type PreviewPaneHandle } from "@/modules/preview";
 import { openSettingsWindow } from "@/modules/settings/openSettingsWindow";
 import { usePreferencesStore } from "@/modules/settings/preferences";
-import { onKeysChanged, setCloseToTray } from "@/modules/settings/store";
+import { onKeysChanged } from "@/modules/settings/store";
 import {
   ShortcutsDialog,
   useGlobalShortcuts,
@@ -633,7 +633,7 @@ export default function App() {
   }, [activeId, closeActivePane, handleClose]);
 
   const closeTerminalPane = useCallback(
-    (tabId: number, leafId: number) => {
+    (_tabId: number, leafId: number) => {
       closePaneByLeaf(leafId);
     },
     [closePaneByLeaf],
