@@ -42,7 +42,7 @@ jobs:
           key: ${{ matrix.platform }}-${{ matrix.rust-target }}
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - uses: tauri-apps/tauri-action@v0
         env:
