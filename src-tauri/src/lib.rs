@@ -101,10 +101,7 @@ pub fn run() {
             let icon = app
                 .default_window_icon()
                 .cloned()
-                .unwrap_or_else(|| {
-                    tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))
-                        .expect("failed to load tray icon")
-                });
+                .unwrap();
 
             TrayIconBuilder::new()
                 .icon(icon)
