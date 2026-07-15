@@ -62,7 +62,6 @@ import {
   type TerminalPaneHandle,
 } from "@/modules/terminal";
 import { ThemeProvider } from "@/modules/theme";
-import { UpdaterDialog } from "@/modules/updater";
 import {
   getWslHome,
   LOCAL_WORKSPACE,
@@ -1003,8 +1002,6 @@ export default function App() {
             rootPath={explorerRoot ?? home}
             onCreated={(path) => openFileTab(path)}
           />
-
-          <UpdaterDialog />
 
           <AlertDialog
             open={pendingCloseTab !== null}

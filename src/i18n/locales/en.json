@@ -146,16 +146,6 @@
       "localization": "Localization",
       "localizationDesc": "This software is based on terax-ai (Apache License 2.0) with Chinese localization modifications."
     },
-    "updater": {
-      "upToDate": "You're up to date",
-      "checkFailed": "Check failed — retry",
-      "checking": "Checking…",
-      "downloading": "Downloading…",
-      "restartToInstall": "Restart to install",
-      "installVersion": "Install v{{version}}",
-      "updateTo": "Update to v{{version}}",
-      "checkForUpdates": "Check for updates"
-    },
     "providerKey": {
       "enterKey": "Enter your API key.",
       "keyPrefixHint": "{{provider}} keys start with \"{{prefix}}\".",
@@ -445,22 +435,6 @@
     "description": "Quick reference for Terax controls.",
     "customize": "Customize",
     "unassigned": "Unassigned"
-  },
-  "updater": {
-    "updateReady": "Update ready",
-    "downloading": "Downloading update…",
-    "versionAvailable": "Terax v{{version}} is available",
-    "restartToInstall": "Restart Terax to finish installing.",
-    "pickDistro": "You're on v{{currentVersion}}. Pick your distro...",
-    "newVersionReady": "A new version is ready to install.",
-    "copied": "Copied",
-    "copy": "Copy",
-    "later": "Later",
-    "installRestart": "Install & restart",
-    "downloadPackage": "Download package",
-    "arch": "Arch",
-    "debian": "Debian / Ubuntu",
-    "fedora": "Fedora / RHEL"
   },
   "app": {
     "saveOrClose": "Save or close unsaved editor tabs before switching workspace.",

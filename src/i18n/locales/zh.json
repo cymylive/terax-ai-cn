@@ -146,16 +146,6 @@
       "localization": "汉化说明",
       "localizationDesc": "本软件基于 terax-ai（Apache License 2.0）汉化修改。"
     },
-    "updater": {
-      "upToDate": "已是最新版本",
-      "checkFailed": "检查失败 — 重试",
-      "checking": "检查中…",
-      "downloading": "下载中…",
-      "restartToInstall": "重启以安装",
-      "installVersion": "安装 v{{version}}",
-      "updateTo": "更新至 v{{version}}",
-      "checkForUpdates": "检查更新"
-    },
     "providerKey": {
       "enterKey": "请输入你的 API Key。",
       "keyPrefixHint": "{{provider}} 密钥以 \"{{prefix}}\" 开头。",
@@ -445,22 +435,6 @@
     "description": "Terax 操作的快速参考。",
     "customize": "自定义",
     "unassigned": "未分配"
-  },
-  "updater": {
-    "updateReady": "更新就绪",
-    "downloading": "正在下载更新…",
-    "versionAvailable": "Terax v{{version}} 可用",
-    "restartToInstall": "重启 Terax 以完成安装。",
-    "pickDistro": "当前版本 v{{currentVersion}}。请选择你的发行版...",
-    "newVersionReady": "新版本已准备好安装。",
-    "copied": "已复制",
-    "copy": "复制",
-    "later": "稍后",
-    "installRestart": "安装并重启",
-    "downloadPackage": "下载安装包",
-    "arch": "Arch",
-    "debian": "Debian / Ubuntu",
-    "fedora": "Fedora / RHEL"
   },
   "app": {
     "saveOrClose": "切换工作区前请保存或关闭未保存的编辑器标签页。",

@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { useUpdater } from "@/modules/updater";
 import { GithubIcon, Globe02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { getName, getVersion } from "@tauri-apps/api/app";
@@ -26,32 +25,6 @@ export function AboutSection() {
   const [version, setVersion] = useState("");
   const [name, setName] = useState("Terax");
   const [build, setBuild] = useState("");
-  const { status, check, install } = useUpdater({ autoCheck: false });
-  const checking = status.kind === "checking";
-  const downloading = status.kind === "downloading";
-  const available = status.kind === "available";
-  const manualAvailable = status.kind === "manual-available";
-  const ready = status.kind === "ready";
-  const checkLabel =
-    status.kind === "uptodate"
-      ? t("settings.updater.upToDate")
-      : status.kind === "error"
-        ? t("settings.updater.checkFailed")
-        : checking
-          ? t("settings.updater.checking")
-          : downloading
-            ? t("settings.updater.downloading")
-            : ready
-              ? t("settings.updater.restartToInstall")
-              : available
-                ? t("settings.updater.installVersion", { version: status.update.version })
-                : manualAvailable
-                  ? t("settings.updater.updateTo", { version: status.info.version })
-                  : t("settings.updater.checkForUpdates");
-  const onUpdateClick = () => {
-    if (available) void install();
-    else void check({ manual: true });
-  };
 
   useEffect(() => {
     void getVersion().then(setVersion);
@@ -130,13 +103,6 @@ export function AboutSection() {
       <div className="flex flex-col gap-1.5">
         <div className="flex gap-2">
           <Button
-            size="sm"
-            onClick={onUpdateClick}
-            disabled={checking || downloading || ready}
-          >
-            {checkLabel}
-          </Button>
-          <Button
             variant="outline"
             size="sm"
             onClick={() => void openUrl(REPO_URL)}
@@ -153,20 +119,6 @@ export function AboutSection() {
             {t("settings.about.reportIssue")}
           </Button>
         </div>
-        {status.kind === "error" && (
-          <p className="font-mono text-[10.5px] break-all text-destructive/80">
-            {status.message}
-          </p>
-        )}
-        {downloading && status.contentLength ? (
-          <p className="text-[11px] text-muted-foreground">
-            {Math.min(
-              100,
-              Math.round((status.downloaded / status.contentLength) * 100),
-            )}
-            %
-          </p>
-        ) : null}
       </div>
     </div>
   );
