@@ -1,9 +1,4 @@
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,14 +9,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   EditorStack,
   NewEditorDialog,
   type EditorPaneHandle,
 } from "@/modules/editor";
 import { useZoom } from "@/lib/useZoom";
-import { FileExplorer, type FileExplorerHandle } from "@/modules/explorer";
 import {
   Header,
   type SearchInlineHandle,
@@ -34,7 +28,7 @@ import {
   type ShortcutHandlers,
 } from "@/modules/shortcuts";
 import { StatusBar } from "@/modules/statusbar";
-import { MAX_PANES_PER_TAB, useTabs, useWorkspaceCwd } from "@/modules/tabs";
+import { MAX_PANES_PER_TAB, useTabs } from "@/modules/tabs";
 import {
   disposeSession,
   hasLeaf,
@@ -54,7 +48,6 @@ import { homeDir } from "@tauri-apps/api/path";
 import type { SearchAddon } from "@xterm/addon-search";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { PanelImperativeHandle } from "react-resizable-panels";
 
 
 export default function App() {
@@ -97,46 +90,11 @@ export default function App() {
   const [activeEditorHandle, setActiveEditorHandle] =
     useState<EditorPaneHandle | null>(null);
   const { zoomIn, zoomOut, zoomReset } = useZoom();
-  const explorerRef = useRef<FileExplorerHandle>(null);
-  const explorerReturnFocusRef = useRef<HTMLElement | null>(null);
-
-  const sidebarRef = useRef<PanelImperativeHandle | null>(null);
-  const toggleSidebar = useCallback(() => {
-    const p = sidebarRef.current;
-    if (!p) return;
-    if (p.getSize().asPercentage <= 0) p.expand();
-    else p.collapse();
-  }, []);
-
-  const toggleExplorerFocus = useCallback(() => {
-    const explorer = explorerRef.current;
-    if (!explorer) return;
-    if (explorer.isFocused()) {
-      const target = explorerReturnFocusRef.current;
-      explorerReturnFocusRef.current = null;
-      if (target && document.body.contains(target)) {
-        target.focus();
-      } else {
-        (document.activeElement as HTMLElement | null)?.blur?.();
-      }
-      return;
-    }
-    const active = document.activeElement;
-    explorerReturnFocusRef.current =
-      active instanceof HTMLElement && active !== document.body ? active : null;
-    const p = sidebarRef.current;
-    if (p && p.getSize().asPercentage <= 0) p.expand();
-    explorer.focus();
-  }, []);
 
   const [home, setHome] = useState<string | null>(null);
-  const [manualExplorerRoot, setManualExplorerRoot] = useState<string | null>(null);
   const [pendingCloseTab, setPendingCloseTab] = useState<number | null>(null);
   const workspaceEnv = useWorkspaceEnvStore((s) => s.env);
   const setWorkspaceEnv = useWorkspaceEnvStore((s) => s.setEnv);
-  const [pendingDeleteTabs, setPendingDeleteTabs] = useState<number[] | null>(
-    null,
-  );
   useEffect(() => {
     homeDir()
       .then((p) => setHome(p.replace(/\\/g, "/")))
@@ -170,14 +128,13 @@ export default function App() {
         return;
       }
 
-        for (const id of liveLeavesRef.current) disposeSession(id);
+      for (const id of liveLeavesRef.current) disposeSession(id);
       searchAddons.current.clear();
       terminalRefs.current.clear();
       editorRefs.current.clear();
       setActiveSearchAddon(null);
       setActiveEditorHandle(null);
       setWorkspaceEnv(env.kind === "local" ? LOCAL_WORKSPACE : env);
-      setManualExplorerRoot(null);
       setHome(nextHome);
       resetWorkspace(nextHome ?? undefined);
     },
@@ -191,16 +148,14 @@ export default function App() {
   const isTerminalTab = activeTab?.kind === "terminal";
   const isEditorTab = activeTab?.kind === "editor";
 
-  const { explorerRoot: autoExplorerRoot, inheritedCwdForNewTab } = useWorkspaceCwd(
-    activeTab,
-    tabs,
-    home,
-  );
-  const explorerRoot = manualExplorerRoot ?? autoExplorerRoot;
-
-  const handleNavigate = useCallback((path: string) => {
-    setManualExplorerRoot(path);
-  }, []);
+  const inheritedCwdForNewTab = useMemo<string | undefined>(() => {
+    if (activeTab?.kind === "terminal" && activeTab.cwd) return activeTab.cwd;
+    if (activeTab?.kind === "editor") {
+      const lastTerm = [...tabs].reverse().find((t) => t.kind === "terminal" && t.cwd);
+      return lastTerm?.kind === "terminal" ? lastTerm.cwd : home ?? undefined;
+    }
+    return home ?? undefined;
+  }, [activeTab, tabs, home]);
 
   useEffect(() => {
     setActiveSearchAddon(
@@ -277,11 +232,11 @@ export default function App() {
   );
 
   const openNewTab = useCallback(() => {
-    newTab(inheritedCwdForNewTab());
+    newTab(inheritedCwdForNewTab);
   }, [newTab, inheritedCwdForNewTab]);
 
   const openNewPrivateTab = useCallback(() => {
-    newPrivateTab(inheritedCwdForNewTab());
+    newPrivateTab(inheritedCwdForNewTab);
   }, [newPrivateTab, inheritedCwdForNewTab]);
 
   const sendCd = useCallback(
@@ -298,81 +253,7 @@ export default function App() {
     [activeLeafId],
   );
 
-  const cdInNewTab = useCallback(
-    (path: string) => {
-      const tabId = newTab(path);
-      setTimeout(() => {
-        const tab = tabsRef.current.find((x) => x.id === tabId);
-        if (!tab || tab.kind !== "terminal") return;
-        const t = terminalRefs.current.get(tab.activeLeafId);
-        if (!t) return;
-        const quoted = path.includes(" ")
-          ? `'${path.replace(/'/g, `'\\''`)}'`
-          : path;
-        t.write(`cd ${quoted}\r`);
-        t.focus();
-      }, 80);
-    },
-    [newTab],
-  );
 
-  const handleOpenFile = useCallback(
-    (path: string, pin?: boolean) => {
-      openFileTab(path, pin ?? false);
-    },
-    [openFileTab],
-  );
-
-  const handlePathRenamed = useCallback(
-    (from: string, to: string) => {
-      for (const t of tabs) {
-        if (t.kind !== "editor") continue;
-        if (t.path === from) {
-          const i = to.lastIndexOf("/");
-          updateTab(t.id, { path: to, title: i === -1 ? to : to.slice(i + 1) });
-        } else if (t.path.startsWith(`${from}/`)) {
-          const suffix = t.path.slice(from.length);
-          const newPath = `${to}${suffix}`;
-          const i = newPath.lastIndexOf("/");
-          updateTab(t.id, {
-            path: newPath,
-            title: i === -1 ? newPath : newPath.slice(i + 1),
-          });
-        }
-      }
-    },
-    [tabs, updateTab],
-  );
-
-  const confirmDeleteClose = useCallback(() => {
-    if (pendingDeleteTabs !== null) {
-      for (const id of pendingDeleteTabs) disposeTab(id);
-      setPendingDeleteTabs(null);
-    }
-  }, [pendingDeleteTabs, disposeTab]);
-
-  const cancelDeleteClose = useCallback(() => {
-    setPendingDeleteTabs(null);
-  }, []);
-
-  const handlePathDeleted = useCallback(
-    (path: string) => {
-      const dirty: number[] = [];
-      for (const t of tabs) {
-        if (t.kind !== "editor") continue;
-        if (t.path !== path && !t.path.startsWith(`${path}/`)) continue;
-        if (t.dirty) {
-          dirty.push(t.id);
-        } else {
-          disposeTab(t.id);
-        }
-      }
-      if (dirty.length > 0) setPendingDeleteTabs(dirty);
-    },
-    [tabs, disposeTab],
-  );
-
-  const activeFilePath = activeTab?.kind === "editor" ? activeTab.path : null;
 
   const splitActivePaneInActiveTab = useCallback(
     (dir: "row" | "col") => {
@@ -414,8 +295,7 @@ export default function App() {
       "search.focus": () => searchInlineRef.current?.focus(),
       "shortcuts.open": () => setShortcutsOpen((v) => !v),
       "settings.open": () => void openSettingsWindow(),
-      "sidebar.toggle": toggleSidebar,
-      "explorer.focus": toggleExplorerFocus,
+      "explorer.focus": () => {},
       "view.zoomIn": zoomIn,
       "view.zoomOut": zoomOut,
       "view.zoomReset": zoomReset,
@@ -429,8 +309,6 @@ export default function App() {
       selectByIndex,
       splitActivePaneInActiveTab,
       focusNextPaneInTab,
-      toggleSidebar,
-      toggleExplorerFocus,
       zoomIn,
       zoomOut,
       zoomReset,
@@ -506,6 +384,7 @@ export default function App() {
     return null;
   }, [isTerminalTab, isEditorTab, activeId, activeSearchAddon, activeEditorHandle]);
 
+  const activeFilePath = activeTab?.kind === "editor" ? activeTab.path : null;
   const activeCwd =
     activeTab?.kind === "terminal" ? (activeTab.cwd ?? null) : null;
 
@@ -522,7 +401,6 @@ export default function App() {
             onNewEditor={() => setNewEditorOpen(true)}
             onClose={handleClose}
             onPin={pinTab}
-            onToggleSidebar={toggleSidebar}
             onSplit={splitActivePaneInActiveTab}
             canSplit={
               activeTerminalTab !== null &&
@@ -530,77 +408,49 @@ export default function App() {
             }
             onOpenShortcuts={() => setShortcutsOpen(true)}
             onOpenSettings={() => void openSettingsWindow()}
+            onToggleSidebar={() => {}}
             searchTarget={searchTarget}
             searchRef={searchInlineRef}
           />
 
           <main className="zoom-content flex min-h-0 flex-1 flex-col">
-            <ResizablePanelGroup
-              orientation="horizontal"
-              className="min-h-0 flex-1"
-            >
-              <ResizablePanel
-                id="sidebar"
-                panelRef={sidebarRef}
-                defaultSize="225px"
-                minSize="130px"
-                maxSize="450px"
-                collapsible
-                collapsedSize={0}
-              >
-                <div className="h-full border-r border-border/60 bg-card">
-                  <FileExplorer
-                    ref={explorerRef}
-            rootPath={explorerRoot}
-            onOpenFile={handleOpenFile}
-            onPathRenamed={handlePathRenamed}
-            onPathDeleted={handlePathDeleted}
-            onRevealInTerminal={cdInNewTab}
-            onNavigate={handleNavigate}
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="relative min-h-0 flex-1">
+                <div
+                  className={cn(
+                    "absolute inset-0 px-3 pt-2 pb-2",
+                    !isTerminalTab && "invisible pointer-events-none",
+                  )}
+                  aria-hidden={!isTerminalTab}
+                >
+                  <TerminalStack
+                    tabs={tabs}
+                    activeId={activeId}
+                    registerHandle={registerTerminalHandle}
+                    onSearchReady={handleSearchReady}
+                    onCwd={handleTerminalCwd}
+                    onExit={handleLeafExit}
+                    onFocusLeaf={handleFocusLeaf}
+                    onClosePane={closeTerminalPane}
                   />
                 </div>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel id="workspace" defaultSize="78%" minSize="30%">
-                <div className="flex h-full min-h-0 flex-col">
-                  <div className="relative min-h-0 flex-1">
-                    <div
-                      className={cn(
-                        "absolute inset-0 px-3 pt-2 pb-2",
-                        !isTerminalTab && "invisible pointer-events-none",
-                      )}
-                      aria-hidden={!isTerminalTab}
-                    >
-                      <TerminalStack
-                        tabs={tabs}
-                        activeId={activeId}
-                        registerHandle={registerTerminalHandle}
-                        onSearchReady={handleSearchReady}
-                        onCwd={handleTerminalCwd}
-                        onExit={handleLeafExit}
-                        onFocusLeaf={handleFocusLeaf}
-                        onClosePane={closeTerminalPane}
-                      />
-                    </div>
-                    <div
-                      className={cn(
-                        "absolute inset-0 px-3 pt-2 pb-2",
-                        !isEditorTab && "invisible pointer-events-none",
-                      )}
-                      aria-hidden={!isEditorTab}
-                    >
-                      <EditorStack
-                        tabs={tabs}
-                        activeId={activeId}
-                        registerHandle={registerEditorHandle}
-                        onDirtyChange={handleEditorDirty}
-                        onCloseTab={disposeTab}
-                      />
-                    </div>
-                  </div>
+                <div
+                  className={cn(
+                    "absolute inset-0 px-3 pt-2 pb-2",
+                    !isEditorTab && "invisible pointer-events-none",
+                  )}
+                  aria-hidden={!isEditorTab}
+                >
+                  <EditorStack
+                    tabs={tabs}
+                    activeId={activeId}
+                    registerHandle={registerEditorHandle}
+                    onDirtyChange={handleEditorDirty}
+                    onCloseTab={disposeTab}
+                  />
                 </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+              </div>
+            </div>
           </main>
 
           <StatusBar
@@ -622,7 +472,7 @@ export default function App() {
           <NewEditorDialog
             open={newEditorOpen}
             onOpenChange={setNewEditorOpen}
-            rootPath={explorerRoot ?? home}
+            rootPath={home}
             onCreated={(path) => openFileTab(path)}
           />
 
@@ -650,36 +500,7 @@ export default function App() {
             </AlertDialogContent>
           </AlertDialog>
 
-          <AlertDialog
-            open={pendingDeleteTabs !== null}
-            onOpenChange={(open) => !open && cancelDeleteClose()}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('app.unsavedChanges')}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {pendingDeleteTabs?.length === 1
-                    ? (() => {
-                        const title = tabs.find(
-                          (t) => t.id === pendingDeleteTabs[0],
-                        )?.title;
-                        return title
-                          ? t('app.unsavedDeleted', { title })
-                          : t('app.unsavedDeletedGeneric');
-                      })()
-                    : t('app.unsavedMultiple', { count: pendingDeleteTabs?.length ?? 0 })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={cancelDeleteClose}>
-                  {t('common.cancel')}
-                </AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDeleteClose}>
-                  {t('common.closeAnyway')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+
         </div>
       </TooltipProvider>
     </ThemeProvider>

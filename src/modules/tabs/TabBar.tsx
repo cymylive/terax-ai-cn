@@ -8,7 +8,6 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtShortcut, MOD_KEY } from "@/lib/platform";
 import { cn } from "@/lib/utils";
-import { fileIconUrl } from "@/modules/explorer/lib/iconResolver";
 import {
   Cancel01Icon,
   ComputerTerminal02Icon,
@@ -185,8 +184,7 @@ export function TabBar({
 
 function TabIcon({ tab }: { tab: Tab }) {
   if (tab.kind === "editor") {
-    const url = fileIconUrl(tab.title);
-    return url ? <img src={url} alt="" className="size-3.5 shrink-0" /> : null;
+    return <HugeiconsIcon icon={PencilEdit02Icon} size={14} strokeWidth={2} className="shrink-0" />;
   }
   if (tab.kind === "terminal" && tab.private) {
     return (
