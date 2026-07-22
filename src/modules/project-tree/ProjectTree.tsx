@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Folder01Icon, FolderAddIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { currentWorkspaceEnv } from "@/modules/workspace";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type DirEntry = {
   name: string;
@@ -23,7 +24,6 @@ export function ProjectTree({ onOpenFile }: Props) {
   const [rootPath, setRootPath] = useState<string | null>(null);
   const [entries, setEntries] = useState<Map<string, DirEntry[]>>(new Map());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const loadDir = useCallback(async (dir: string) => {
     try {
@@ -42,35 +42,24 @@ export function ProjectTree({ onOpenFile }: Props) {
     }
   }, []);
 
-  const pickFolder = useCallback(() => {
-    inputRef.current?.click();
-  }, []);
-
-  const handlePicked = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (files && files.length > 0) {
-        const f = files[0] as any;
-        const fullPath: string | undefined = f.path;
-        if (fullPath) {
-          let dirPath: string;
-          const rel: string | undefined = f.webkitRelativePath;
-          if (rel && rel.length > 0) {
-            dirPath = fullPath.slice(0, fullPath.length - rel.length - 1);
-          } else {
-            dirPath = fullPath.replace(/[\\/][^\\/]*$/, "");
-          }
-          const normalized = dirPath.replace(/\\/g, "/");
-          setRootPath(normalized);
-          setExpanded(new Set([normalized]));
-          setEntries(new Map());
-          void loadDir(normalized);
-        }
+  const pickFolder = useCallback(async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "选择项目文件夹",
+      });
+      if (selected) {
+        const normalized = selected.replace(/\\/g, "/");
+        setRootPath(normalized);
+        setExpanded(new Set([normalized]));
+        setEntries(new Map());
+        void loadDir(normalized);
       }
-      e.target.value = "";
-    },
-    [loadDir],
-  );
+    } catch {
+      // user cancelled or error
+    }
+  }, [loadDir]);
 
   const toggleDir = useCallback(
     (dir: string) => {
@@ -110,18 +99,6 @@ export function ProjectTree({ onOpenFile }: Props) {
         <Button variant="outline" size="sm" onClick={pickFolder}>
           选择文件夹
         </Button>
-        <input
-          ref={(el) => {
-            if (el) {
-              el.setAttribute("directory", "");
-              el.setAttribute("webkitdirectory", "");
-            }
-            inputRef.current = el;
-          }}
-          type="file"
-          style={{ display: "none" }}
-          onChange={handlePicked}
-        />
       </div>
     );
   }
@@ -144,18 +121,6 @@ export function ProjectTree({ onOpenFile }: Props) {
           <HugeiconsIcon icon={FolderAddIcon} size={13} strokeWidth={2} />
         </Button>
       </div>
-      <input
-        ref={(el) => {
-          if (el) {
-            el.setAttribute("directory", "");
-            el.setAttribute("webkitdirectory", "");
-          }
-          inputRef.current = el;
-        }}
-        type="file"
-        style={{ display: "none" }}
-        onChange={handlePicked}
-      />
       <div className="min-h-0 flex-1 overflow-y-auto py-1">
         <TreeNode
           name={basename(rootPath)}
