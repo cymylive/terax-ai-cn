@@ -82,20 +82,12 @@ export function TerminalStack({
   return (
     <div className="relative h-full w-full">
       {terminals.map((t) => {
-        const tabVisible = t.id === activeId;
+        if (t.id !== activeId) return null;
         return (
-          <div
-            key={t.id}
-            className="absolute inset-0"
-            style={{
-              visibility: tabVisible ? "visible" : "hidden",
-              pointerEvents: tabVisible ? "auto" : "none",
-            }}
-            aria-hidden={!tabVisible}
-          >
+          <div key={t.id} className="absolute inset-0">
             <PaneTreeView
               node={t.paneTree}
-              tabVisible={tabVisible}
+              tabVisible={true}
               activeLeafId={t.activeLeafId}
               onFocusLeaf={(leafId) => onFocusLeaf(t.id, leafId)}
               onClosePane={onClosePane ? (leafId) => onClosePane(t.id, leafId) : undefined}

@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import type { EditorTab, Tab } from "@/modules/tabs";
 import { useEffect, useRef } from "react";
 import { EditorPane, type EditorPaneHandle } from "./EditorPane";
@@ -86,16 +85,9 @@ export function EditorStack({
   return (
     <div className="relative h-full w-full">
       {editors.map((t) => {
-        const visible = t.id === activeId;
+        if (t.id !== activeId) return null;
         return (
-          <div
-            key={t.id}
-            className={cn(
-              "absolute inset-0",
-              !visible && "invisible pointer-events-none",
-            )}
-            aria-hidden={!visible}
-          >
+          <div key={t.id} className="absolute inset-0">
             <div className="h-full overflow-hidden rounded-md border border-border/60 bg-background">
               <EditorPane
                 ref={getRefCallback(t.id)}

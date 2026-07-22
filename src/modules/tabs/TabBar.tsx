@@ -12,8 +12,6 @@ import { fileIconUrl } from "@/modules/explorer/lib/iconResolver";
 import {
   Cancel01Icon,
   ComputerTerminal02Icon,
-  GitCompareIcon,
-  Globe02Icon,
   IncognitoIcon,
   PencilEdit02Icon,
   PlusSignIcon,
@@ -29,10 +27,8 @@ type Props = {
   onSelect: (id: number) => void;
   onNew: () => void;
   onNewPrivate: () => void;
-  onNewPreview: () => void;
   onNewEditor: () => void;
   onClose: (id: number) => void;
-  /** Pin (promote) a preview tab to persistent on double-click. */
   onPin: (id: number) => void;
   compact?: boolean;
 };
@@ -43,7 +39,6 @@ export function TabBar({
   onSelect,
   onNew,
   onNewPrivate,
-  onNewPreview,
   onNewEditor,
   onClose,
   onPin,
@@ -52,7 +47,6 @@ export function TabBar({
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Horizontal wheel scroll without holding shift.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -66,7 +60,6 @@ export function TabBar({
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  // Keep the active tab visible after selection / open.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -110,8 +103,6 @@ export function TabBar({
                     )}
                   >
                     <TabIcon tab={tab} />
-                    {/* Preview tabs use italic to signal the transient state,
-                        matching the visual convention from VSCode. */}
                     <span className={cn("truncate", isPreview && "italic")}>
                       {labelFor(tab)}
                     </span>
@@ -185,13 +176,6 @@ export function TabBar({
                 {fmtShortcut(MOD_KEY, "E")}
               </span>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onNewPreview()}>
-              <HugeiconsIcon icon={Globe02Icon} size={14} strokeWidth={1.75} />
-              <span className="flex-1">{t('tabs.preview')}</span>
-              <span className="text-xs text-muted-foreground">
-                {fmtShortcut(MOD_KEY, "P")}
-              </span>
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -203,26 +187,6 @@ function TabIcon({ tab }: { tab: Tab }) {
   if (tab.kind === "editor") {
     const url = fileIconUrl(tab.title);
     return url ? <img src={url} alt="" className="size-3.5 shrink-0" /> : null;
-  }
-  if (tab.kind === "preview") {
-    return (
-      <HugeiconsIcon
-        icon={Globe02Icon}
-        size={14}
-        strokeWidth={2}
-        className="shrink-0"
-      />
-    );
-  }
-  if (tab.kind === "ai-diff") {
-    return (
-      <HugeiconsIcon
-        icon={GitCompareIcon}
-        size={14}
-        strokeWidth={2}
-        className="shrink-0 text-yellow-600 dark:text-yellow-400"
-      />
-    );
   }
   if (tab.kind === "terminal" && tab.private) {
     return (
@@ -246,8 +210,6 @@ function TabIcon({ tab }: { tab: Tab }) {
 
 function labelFor(t: Tab): string {
   if (t.kind === "editor") return t.title;
-  if (t.kind === "preview") return t.title;
-  if (t.kind === "ai-diff") return t.title;
   if (!t.cwd) return t.title;
   const parts = t.cwd.split(/[\\/]/).filter(Boolean);
   return parts.length ? parts[parts.length - 1] : "/";

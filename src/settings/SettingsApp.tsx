@@ -4,10 +4,8 @@ import { IS_MAC, USE_CUSTOM_WINDOW_CONTROLS } from "@/lib/platform";
 import type { SettingsTab } from "@/modules/settings/openSettingsWindow";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import {
-  AiScanIcon,
   InformationCircleIcon,
   Settings01Icon,
-  UserMultiple02Icon,
   KeyboardIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -15,9 +13,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AboutSection } from "./sections/AboutSection";
-import { AgentsSection } from "./sections/AgentsSection";
 import { GeneralSection } from "./sections/GeneralSection";
-import { ModelsSection } from "./sections/ModelsSection";
 import { ShortcutsSection } from "./sections/ShortcutsSection";
 
 function useTabs() {
@@ -25,8 +21,6 @@ function useTabs() {
   return [
     { id: "general" as SettingsTab, label: t("settings.tabs.general"), icon: Settings01Icon, component: GeneralSection },
     { id: "shortcuts" as SettingsTab, label: t("settings.tabs.shortcuts"), icon: KeyboardIcon, component: ShortcutsSection },
-    { id: "models" as SettingsTab, label: t("settings.tabs.models"), icon: AiScanIcon, component: ModelsSection },
-    { id: "agents" as SettingsTab, label: t("settings.tabs.agents"), icon: UserMultiple02Icon, component: AgentsSection },
     { id: "about" as SettingsTab, label: t("settings.tabs.about"), icon: InformationCircleIcon, component: AboutSection },
   ];
 }
@@ -34,8 +28,6 @@ function useTabs() {
 const VALID_TABS: SettingsTab[] = [
   "general",
   "shortcuts",
-  "models",
-  "agents",
   "about",
 ];
 
@@ -61,10 +53,6 @@ export function SettingsApp() {
 
   useEffect(() => {
     const apply = (detail: string) => {
-      if (detail === "ai" || detail === "connections") {
-        setActive("models");
-        return;
-      }
       if ((VALID_TABS as string[]).includes(detail)) {
         setActive(detail as SettingsTab);
       }

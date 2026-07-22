@@ -38,7 +38,6 @@ type Props = {
   onSelect: (id: number) => void;
   onNew: () => void;
   onNewPrivate: () => void;
-  onNewPreview: () => void;
   onNewEditor: () => void;
   onClose: (id: number) => void;
   /** Promote a preview (transient) tab to persistent. */
@@ -61,7 +60,6 @@ export function Header({
   onSelect,
   onNew,
   onNewPrivate,
-  onNewPreview,
   onNewEditor,
   onClose,
   onPin,
@@ -208,8 +206,7 @@ export function Header({
           onSelect={onSelect}
           onNew={onNew}
           onNewPrivate={onNewPrivate}
-          onNewPreview={onNewPreview}
-          onNewEditor={onNewEditor}
+           onNewEditor={onNewEditor}
           onClose={onClose}
           onPin={onPin}
           compact={compact}

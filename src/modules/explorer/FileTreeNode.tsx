@@ -35,7 +35,6 @@ type Props = {
    */
   onOpenFile: (path: string, pin?: boolean) => void;
   onRevealInTerminal?: (path: string) => void;
-  onAttachToAgent?: (path: string) => void;
   selectedPath: string | null;
   onSelectPath: (path: string) => void;
 };
@@ -48,7 +47,6 @@ function FileTreeNodeImpl({
   tree,
   onOpenFile,
   onRevealInTerminal,
-  onAttachToAgent,
   selectedPath,
   onSelectPath,
 }: Props) {
@@ -195,13 +193,6 @@ function FileTreeNodeImpl({
           <ContextMenuSeparator />
           <ContextMenuItem
             className={COMPACT_ITEM}
-            onSelect={() => onAttachToAgent?.(path)}
-          >
-            {t('explorer.attachToAgent')}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            className={COMPACT_ITEM}
             onSelect={() => tree.beginRename(path)}
           >
             {t('explorer.rename')}
@@ -279,7 +270,6 @@ function FileTreeNodeImpl({
             tree={tree}
             onOpenFile={onOpenFile}
             onRevealInTerminal={onRevealInTerminal}
-            onAttachToAgent={onAttachToAgent}
             selectedPath={selectedPath}
             onSelectPath={onSelectPath}
           />

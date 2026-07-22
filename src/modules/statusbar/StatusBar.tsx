@@ -1,9 +1,3 @@
-import { useChatStore } from "@/modules/ai";
-import { AgentStatusPill } from "@/modules/ai/components/AgentStatusPill";
-import {
-  AiOpenButton,
-  AiStatusBarControls,
-} from "@/modules/ai/components/AiStatusBarControls";
 import {
   Tooltip,
   TooltipContent,
@@ -22,9 +16,6 @@ type Props = {
   home: string | null;
   onCd: (path: string) => void;
   onWorkspaceChange: (env: WorkspaceEnv) => void;
-  onOpenMini: () => void;
-  /** Only rendered when the AI panel is open and a key is loaded. */
-  hasComposer: boolean;
   privateActive: boolean;
 };
 
@@ -34,13 +25,9 @@ export function StatusBar({
   home,
   onCd,
   onWorkspaceChange,
-  onOpenMini,
-  hasComposer,
   privateActive,
 }: Props) {
   const { t } = useTranslation();
-  const panelOpen = useChatStore((s) => s.panelOpen);
-  const openPanel = useChatStore((s) => s.openPanel);
 
   return (
     <footer className="flex h-8 shrink-0 items-center justify-between gap-3 border-t border-border/60 bg-card/60 px-3 text-[11px]">
@@ -60,14 +47,6 @@ export function StatusBar({
             </TooltipContent>
           </Tooltip>
         ) : null}
-      </div>
-      <div className="flex shrink-0 items-center gap-1.5">
-        <AgentStatusPill onClick={onOpenMini} />
-        {panelOpen && hasComposer ? (
-          <AiStatusBarControls />
-        ) : (
-          <AiOpenButton onOpen={openPanel} />
-        )}
       </div>
     </footer>
   );

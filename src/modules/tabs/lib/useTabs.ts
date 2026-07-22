@@ -14,6 +14,7 @@ import { disposeSession } from "@/modules/terminal/lib/useTerminalSession";
 
 // Matches the renderer slot pool size — over this we'd evict an active leaf.
 export const MAX_PANES_PER_TAB = 4;
+export const MAX_TABS = 30;
 
 export type TerminalTab = {
   id: number;
@@ -40,51 +41,18 @@ export type EditorTab = {
   preview: boolean;
 };
 
-export type PreviewTab = {
-  id: number;
-  kind: "preview";
-  title: string;
-  url: string;
-};
-
-export type AiDiffStatus = "pending" | "approved" | "rejected";
-
-export type AiDiffTab = {
-  id: number;
-  kind: "ai-diff";
-  title: string;
-  path: string;
-  /** "" for newly created files. */
-  originalContent: string;
-  proposedContent: string;
-  /** Tool-call approval id used to resolve the AI SDK approval. */
-  approvalId: string;
-  status: AiDiffStatus;
-  isNewFile: boolean;
-};
-
-export type Tab = TerminalTab | EditorTab | PreviewTab | AiDiffTab;
+export type Tab = TerminalTab | EditorTab;
 
 export type TabPatch = Partial<{
   title: string;
   cwd: string;
   path: string;
   dirty: boolean;
-  url: string;
 }>;
 
 function basename(path: string): string {
   const parts = path.split(/[\\/]/).filter(Boolean);
   return parts.length ? parts[parts.length - 1] : path;
-}
-
-function titleFromUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.host || url;
-  } catch {
-    return url || "preview";
-  }
 }
 
 export function useTabs(initial?: Partial<TerminalTab>) {
@@ -108,17 +76,20 @@ export function useTabs(initial?: Partial<TerminalTab>) {
   const newTab = useCallback((cwd?: string) => {
     const tabId = nextIdRef.current++;
     const leafId = nextIdRef.current++;
-    setTabs((t) => [
-      ...t,
-      {
-        id: tabId,
-        kind: "terminal",
-        title: "shell",
-        cwd,
-        paneTree: { kind: "leaf", id: leafId, cwd },
-        activeLeafId: leafId,
-      },
-    ]);
+    setTabs((t) => {
+      if (t.length >= MAX_TABS) return t;
+      return [
+        ...t,
+        {
+          id: tabId,
+          kind: "terminal",
+          title: "shell",
+          cwd,
+          paneTree: { kind: "leaf", id: leafId, cwd },
+          activeLeafId: leafId,
+        },
+      ];
+    });
     setActiveId(tabId);
     return tabId;
   }, []);
@@ -126,18 +97,21 @@ export function useTabs(initial?: Partial<TerminalTab>) {
   const newPrivateTab = useCallback((cwd?: string) => {
     const tabId = nextIdRef.current++;
     const leafId = nextIdRef.current++;
-    setTabs((t) => [
-      ...t,
-      {
-        id: tabId,
-        kind: "terminal",
-        title: "private",
-        cwd,
-        paneTree: { kind: "leaf", id: leafId, cwd },
-        activeLeafId: leafId,
-        private: true,
-      },
-    ]);
+    setTabs((t) => {
+      if (t.length >= MAX_TABS) return t;
+      return [
+        ...t,
+        {
+          id: tabId,
+          kind: "terminal",
+          title: "private",
+          cwd,
+          paneTree: { kind: "leaf", id: leafId, cwd },
+          activeLeafId: leafId,
+          private: true,
+        },
+      ];
+    });
     setActiveId(tabId);
     return tabId;
   }, []);
@@ -235,92 +209,6 @@ export function useTabs(initial?: Partial<TerminalTab>) {
     );
   }, []);
 
-  const openAiDiffTab = useCallback(
-    (input: {
-      path: string;
-      originalContent: string;
-      proposedContent: string;
-      approvalId: string;
-      isNewFile: boolean;
-    }) => {
-      let targetId: number | null = null;
-      setTabs((curr) => {
-        const existing = curr.find(
-          (t) => t.kind === "ai-diff" && t.approvalId === input.approvalId,
-        );
-        if (existing) {
-          targetId = existing.id;
-          return curr;
-        }
-        const id = nextIdRef.current++;
-        targetId = id;
-        const title = `${basename(input.path)} (AI diff)`;
-        return [
-          ...curr,
-          {
-            id,
-            kind: "ai-diff",
-            title,
-            path: input.path,
-            originalContent: input.originalContent,
-            proposedContent: input.proposedContent,
-            approvalId: input.approvalId,
-            status: "pending",
-            isNewFile: input.isNewFile,
-          },
-        ];
-      });
-      if (targetId !== null) setActiveId(targetId);
-      return targetId as number | null;
-    },
-    [],
-  );
-
-  const setAiDiffStatus = useCallback(
-    (approvalId: string, status: AiDiffStatus) => {
-      setTabs((curr) =>
-        curr.map((t) =>
-          t.kind === "ai-diff" && t.approvalId === approvalId
-            ? { ...t, status }
-            : t,
-        ),
-      );
-    },
-    [],
-  );
-
-  const closeAiDiffTab = useCallback((approvalId: string) => {
-    setTabs((curr) => {
-      const target = curr.find(
-        (t) => t.kind === "ai-diff" && t.approvalId === approvalId,
-      );
-      if (!target || curr.length <= 1) {
-        if (!target) return curr;
-        return curr.map((t) =>
-          t.kind === "ai-diff" && t.approvalId === approvalId
-            ? { ...t, status: "approved" as AiDiffStatus }
-            : t,
-        );
-      }
-      const idx = curr.findIndex((t) => t.id === target.id);
-      const next = curr.filter((t) => t.id !== target.id);
-      setActiveId((active) =>
-        target.id === active ? next[Math.max(0, idx - 1)].id : active,
-      );
-      return next;
-    });
-  }, []);
-
-  const newPreviewTab = useCallback((url: string) => {
-    const id = nextIdRef.current++;
-    setTabs((t) => [
-      ...t,
-      { id, kind: "preview", title: titleFromUrl(url), url },
-    ]);
-    setActiveId(id);
-    return id;
-  }, []);
-
   const closeTab = useCallback((id: number) => {
     let toDispose: number[] = [];
     setTabs((curr) => {
@@ -348,16 +236,6 @@ export function useTabs(initial?: Partial<TerminalTab>) {
             ...x,
             ...(patch.title !== undefined && { title: patch.title }),
             ...(patch.cwd !== undefined && { cwd: patch.cwd }),
-          };
-        }
-        if (x.kind === "preview") {
-          return {
-            ...x,
-            ...(patch.title !== undefined && { title: patch.title }),
-            ...(patch.url !== undefined && {
-              url: patch.url,
-              title: patch.title ?? titleFromUrl(patch.url),
-            }),
           };
         }
         // editor tab: auto-promote from preview the moment the file becomes dirty.
@@ -556,10 +434,8 @@ export function useTabs(initial?: Partial<TerminalTab>) {
     newPrivateTab,
     openFileTab,
     pinTab,
-    newPreviewTab,
-    openAiDiffTab,
-    setAiDiffStatus,
-    closeAiDiffTab,
+
+
     closeTab,
     updateTab,
     selectByIndex,
