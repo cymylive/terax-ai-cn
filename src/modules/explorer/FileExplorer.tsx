@@ -70,15 +70,6 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(
     const [isSearchActive, setIsSearchActive] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
-    const pickerInitRef = useRef(false);
-
-    useEffect(() => {
-      if (fileInputRef.current && !pickerInitRef.current) {
-        pickerInitRef.current = true;
-        (fileInputRef.current as any).webkitdirectory = true;
-        (fileInputRef.current as any).directory = true;
-      }
-    }, []);
     const searchRef = useRef<ExplorerSearchHandle>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -150,12 +141,16 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(
     const handleFolderPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (files && files.length > 0) {
-        const fullPath = (files[0] as any).path;
+        const f = files[0] as any;
+        const fullPath: string | undefined = f.path;
         if (fullPath) {
-          const dirPath = fullPath.substring(
-            0,
-            fullPath.length - files[0].webkitRelativePath.length - 1
-          );
+          let dirPath: string;
+          const rel: string | undefined = f.webkitRelativePath;
+          if (rel && rel.length > 0) {
+            dirPath = fullPath.slice(0, fullPath.length - rel.length - 1);
+          } else {
+            dirPath = fullPath.replace(/[\\/][^\\/]*$/, "");
+          }
           onNavigate?.(dirPath.replace(/\\/g, "/"));
         }
       }
@@ -275,7 +270,13 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(
           </span>
 
           <input
-            ref={fileInputRef}
+            ref={(el) => {
+              if (el) {
+                el.setAttribute("directory", "");
+                el.setAttribute("webkitdirectory", "");
+              }
+              fileInputRef.current = el;
+            }}
             type="file"
             style={{ display: "none" }}
             onChange={handleFolderPicked}
