@@ -1,0 +1,12 @@
+export { TabBar } from "./TabBar";
+export {
+  MAX_PANES_PER_TAB,
+  MAX_TABS,
+  useTabs,
+  type Tab,
+  type TerminalTab,
+  type EditorTab,
+
+  type TabPatch,
+} from "./lib/useTabs";
+export { useWorkspaceCwd } from "./lib/useWorkspaceCwd";

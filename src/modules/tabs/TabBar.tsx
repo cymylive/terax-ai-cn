@@ -1,0 +1,263 @@
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { fmtShortcut, MOD_KEY } from "@/lib/platform";
+import { cn } from "@/lib/utils";
+import {
+  Cancel01Icon,
+  ComputerTerminal02Icon,
+  IncognitoIcon,
+  PencilEdit02Icon,
+  PlusSignIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { EditorTab, Tab } from "./lib/useTabs";
+
+type Props = {
+  tabs: Tab[];
+  activeId: number;
+  onSelect: (id: number) => void;
+  onNew: () => void;
+  onNewPrivate: () => void;
+  onNewEditor: () => void;
+  onClose: (id: number) => void;
+  onPin: (id: number) => void;
+  onRename?: (id: number, title: string) => void;
+  compact?: boolean;
+};
+
+const INPUT_WIDTH = 140;
+
+export function TabBar({
+  tabs,
+  activeId,
+  onSelect,
+  onNew,
+  onNewPrivate,
+  onNewEditor,
+  onClose,
+  onPin,
+  onRename,
+  compact,
+}: Props) {
+  const { t } = useTranslation();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameRef = useRef<HTMLInputElement>(null);
+  const renamingValueRef = useRef("");
+
+  const commitRename = useCallback(() => {
+    if (renamingId !== null && renamingValueRef.current.trim()) {
+      onRename?.(renamingId, renamingValueRef.current.trim());
+    }
+    setRenamingId(null);
+  }, [renamingId, onRename]);
+
+  const startRename = useCallback((id: number, current: string) => {
+    setRenamingId(id);
+    setRenameValue(current);
+    renamingValueRef.current = current;
+    requestAnimationFrame(() => {
+      renameRef.current?.select();
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if (el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const active = el.querySelector<HTMLElement>(`[data-tab-id="${activeId}"]`);
+    active?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeId, tabs.length]);
+
+  return (
+    <div
+      ref={scrollRef}
+      data-tauri-drag-region
+      className="min-w-0 shrink overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <div className="flex w-max items-center gap-0.5">
+        <Tabs
+          value={String(activeId)}
+          onValueChange={(v) => onSelect(Number(v))}
+        >
+          <TabsList className="h-7 w-max gap-0.5 bg-transparent p-0">
+            {tabs.map((tab) => {
+              const isPreview = tab.kind === "editor" && (tab as EditorTab).preview;
+              const isRenaming = renamingId === tab.id;
+              const canRename = !isPreview && (tab.kind === "terminal" || tab.kind === "editor");
+              return (
+                <TabsTrigger
+                  key={tab.id}
+                  value={String(tab.id)}
+                  data-tab-id={tab.id}
+                  onDoubleClick={() => {
+                    if (isPreview) { onPin(tab.id); return; }
+                    if (canRename) startRename(tab.id, labelFor(tab));
+                  }}
+                  className={cn(
+                    "group h-7 shrink-0 gap-1.5 rounded-md text-xs text-muted-foreground transition-colors data-[state=active]:bg-accent data-[state=active]:text-foreground hover:text-foreground/80 justify-between",
+                    compact
+                      ? "px-1.5!"
+                      : tabs.length === 1
+                        ? "px-2!"
+                        : "ps-2! pe-1!",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex items-center gap-1.5 truncate",
+                      compact ? "max-w-48" : "max-w-80",
+                    )}
+                  >
+                    <TabIcon tab={tab} />
+                    {isRenaming ? (
+                      <input
+                        ref={renameRef}
+                        value={renameValue}
+                        onChange={(e) => {
+                          setRenameValue(e.target.value);
+                          renamingValueRef.current = e.target.value;
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+                          if (e.key === "Escape") { e.preventDefault(); setRenamingId(null); }
+                        }}
+                        onBlur={commitRename}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: INPUT_WIDTH }}
+                        className="h-5 rounded border border-border/60 bg-background px-1.5 text-[11px] outline-none"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className={cn("truncate", isPreview && "italic")}>
+                        {labelFor(tab)}
+                      </span>
+                    )}
+                    {tab.kind === "editor" && tab.dirty ? (
+                      <span
+                        aria-label={t('tabs.unsavedChanges')}
+                        className="size-1.5 shrink-0 rounded-full bg-foreground/70"
+                      />
+                    ) : null}
+                  </span>
+                  {tabs.length > 1 && (
+                    <span
+                      role="button"
+                      aria-label={t('tabs.closeTab')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClose(tab.id);
+                      }}
+                      className="hidden rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-foreground group-hover:block"
+                    >
+                      <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                    </span>
+                  )}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              title={t('tabs.newTab')}
+            >
+              <HugeiconsIcon icon={PlusSignIcon} size={14} strokeWidth={2} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-44">
+            <DropdownMenuItem onSelect={() => onNew()}>
+              <HugeiconsIcon
+                icon={ComputerTerminal02Icon}
+                size={14}
+                strokeWidth={1.75}
+              />
+              <span className="flex-1">{t('tabs.terminal')}</span>
+              <span className="text-xs text-muted-foreground">
+                {fmtShortcut(MOD_KEY, "T")}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onNewPrivate()}>
+              <HugeiconsIcon
+                icon={IncognitoIcon}
+                size={14}
+                strokeWidth={1.75}
+              />
+              <span className="flex-1">{t('tabs.privacy')}</span>
+              <span className="text-xs text-muted-foreground">
+                {fmtShortcut(MOD_KEY, "R")}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onNewEditor()}>
+              <HugeiconsIcon
+                icon={PencilEdit02Icon}
+                size={14}
+                strokeWidth={1.75}
+              />
+              <span className="flex-1">{t('tabs.editor')}</span>
+              <span className="text-xs text-muted-foreground">
+                {fmtShortcut(MOD_KEY, "E")}
+              </span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
+
+function TabIcon({ tab }: { tab: Tab }) {
+  if (tab.kind === "editor") {
+    return <HugeiconsIcon icon={PencilEdit02Icon} size={14} strokeWidth={2} className="shrink-0" />;
+  }
+  if (tab.kind === "terminal" && tab.private) {
+    return (
+      <HugeiconsIcon
+        icon={IncognitoIcon}
+        size={14}
+        strokeWidth={2}
+        className="shrink-0 text-amber-600 dark:text-amber-400"
+      />
+    );
+  }
+  return (
+    <HugeiconsIcon
+      icon={ComputerTerminal02Icon}
+      size={14}
+      strokeWidth={2}
+      className="shrink-0"
+    />
+  );
+}
+
+function labelFor(t: Tab): string {
+  if (t.kind === "editor") return t.title;
+  if (!t.cwd) return t.title;
+  const parts = t.cwd.split(/[\\/]/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "/";
+}
