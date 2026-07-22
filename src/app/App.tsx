@@ -1,4 +1,10 @@
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
+import { ProjectTree } from "@/modules/project-tree";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +53,7 @@ import {
 import { homeDir } from "@tauri-apps/api/path";
 import type { SearchAddon } from "@xterm/addon-search";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PanelImperativeHandle } from "react-resizable-panels";
 import { useTranslation } from "react-i18next";
 
 
@@ -90,6 +97,13 @@ export default function App() {
   const [activeEditorHandle, setActiveEditorHandle] =
     useState<EditorPaneHandle | null>(null);
   const { zoomIn, zoomOut, zoomReset } = useZoom();
+  const sidebarRef = useRef<PanelImperativeHandle | null>(null);
+  const toggleSidebar = useCallback(() => {
+    const p = sidebarRef.current;
+    if (!p) return;
+    if (p.getSize().asPercentage <= 0) p.expand();
+    else p.collapse();
+  }, []);
 
   const [home, setHome] = useState<string | null>(null);
   const [pendingCloseTab, setPendingCloseTab] = useState<number | null>(null);
@@ -363,6 +377,13 @@ export default function App() {
     [closePaneByLeaf],
   );
 
+  const handleOpenFile = useCallback(
+    (path: string) => {
+      openFileTab(path);
+    },
+    [openFileTab],
+  );
+
   const handleEditorDirty = useCallback(
     (id: number, dirty: boolean) => updateTab(id, { dirty }),
     [updateTab],
@@ -413,49 +434,70 @@ export default function App() {
               leafIds(activeTerminalTab.paneTree).length < MAX_PANES_PER_TAB
             }
             onOpenSettings={() => void openSettingsWindow()}
-            onToggleSidebar={() => {}}
+            onToggleSidebar={toggleSidebar}
             searchTarget={searchTarget}
             searchRef={searchInlineRef}
           />
 
           <main className="zoom-content flex min-h-0 flex-1 flex-col">
-            <div className="flex h-full min-h-0 flex-col">
-              <div className="relative min-h-0 flex-1">
-                <div
-                  className={cn(
-                    "absolute inset-0 px-3 pt-2 pb-2",
-                    !isTerminalTab && "invisible pointer-events-none",
-                  )}
-                  aria-hidden={!isTerminalTab}
-                >
-                  <TerminalStack
-                    tabs={tabs}
-                    activeId={activeId}
-                    registerHandle={registerTerminalHandle}
-                    onSearchReady={handleSearchReady}
-                    onCwd={handleTerminalCwd}
-                    onExit={handleLeafExit}
-                    onFocusLeaf={handleFocusLeaf}
-                    onClosePane={closeTerminalPane}
-                  />
+            <ResizablePanelGroup
+              orientation="horizontal"
+              className="min-h-0 flex-1"
+            >
+              <ResizablePanel
+                id="sidebar"
+                panelRef={sidebarRef}
+                defaultSize="225px"
+                minSize="130px"
+                maxSize="450px"
+                collapsible
+                collapsedSize={0}
+              >
+                <div className="h-full border-r border-border/60 bg-card">
+                  <ProjectTree onOpenFile={handleOpenFile} />
                 </div>
-                <div
-                  className={cn(
-                    "absolute inset-0 px-3 pt-2 pb-2",
-                    !isEditorTab && "invisible pointer-events-none",
-                  )}
-                  aria-hidden={!isEditorTab}
-                >
-                  <EditorStack
-                    tabs={tabs}
-                    activeId={activeId}
-                    registerHandle={registerEditorHandle}
-                    onDirtyChange={handleEditorDirty}
-                    onCloseTab={disposeTab}
-                  />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel id="workspace" defaultSize="78%" minSize="30%">
+                <div className="flex h-full min-h-0 flex-col">
+                  <div className="relative min-h-0 flex-1">
+                    <div
+                      className={cn(
+                        "absolute inset-0 px-3 pt-2 pb-2",
+                        !isTerminalTab && "invisible pointer-events-none",
+                      )}
+                      aria-hidden={!isTerminalTab}
+                    >
+                      <TerminalStack
+                        tabs={tabs}
+                        activeId={activeId}
+                        registerHandle={registerTerminalHandle}
+                        onSearchReady={handleSearchReady}
+                        onCwd={handleTerminalCwd}
+                        onExit={handleLeafExit}
+                        onFocusLeaf={handleFocusLeaf}
+                        onClosePane={closeTerminalPane}
+                      />
+                    </div>
+                    <div
+                      className={cn(
+                        "absolute inset-0 px-3 pt-2 pb-2",
+                        !isEditorTab && "invisible pointer-events-none",
+                      )}
+                      aria-hidden={!isEditorTab}
+                    >
+                      <EditorStack
+                        tabs={tabs}
+                        activeId={activeId}
+                        registerHandle={registerEditorHandle}
+                        onDirtyChange={handleEditorDirty}
+                        onCloseTab={disposeTab}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </main>
 
           <StatusBar
