@@ -130,6 +130,7 @@ export default function App() {
   }, []);
 
   const [home, setHome] = useState<string | null>(null);
+  const [manualExplorerRoot, setManualExplorerRoot] = useState<string | null>(null);
   const [pendingCloseTab, setPendingCloseTab] = useState<number | null>(null);
   const workspaceEnv = useWorkspaceEnvStore((s) => s.env);
   const setWorkspaceEnv = useWorkspaceEnvStore((s) => s.setEnv);
@@ -169,13 +170,14 @@ export default function App() {
         return;
       }
 
-      for (const id of liveLeavesRef.current) disposeSession(id);
+        for (const id of liveLeavesRef.current) disposeSession(id);
       searchAddons.current.clear();
       terminalRefs.current.clear();
       editorRefs.current.clear();
       setActiveSearchAddon(null);
       setActiveEditorHandle(null);
       setWorkspaceEnv(env.kind === "local" ? LOCAL_WORKSPACE : env);
+      setManualExplorerRoot(null);
       setHome(nextHome);
       resetWorkspace(nextHome ?? undefined);
     },
@@ -189,11 +191,16 @@ export default function App() {
   const isTerminalTab = activeTab?.kind === "terminal";
   const isEditorTab = activeTab?.kind === "editor";
 
-  const { explorerRoot, inheritedCwdForNewTab } = useWorkspaceCwd(
+  const { explorerRoot: autoExplorerRoot, inheritedCwdForNewTab } = useWorkspaceCwd(
     activeTab,
     tabs,
     home,
   );
+  const explorerRoot = manualExplorerRoot ?? autoExplorerRoot;
+
+  const handleNavigate = useCallback((path: string) => {
+    setManualExplorerRoot(path);
+  }, []);
 
   useEffect(() => {
     setActiveSearchAddon(
@@ -544,11 +551,12 @@ export default function App() {
                 <div className="h-full border-r border-border/60 bg-card">
                   <FileExplorer
                     ref={explorerRef}
-                    rootPath={explorerRoot}
-                    onOpenFile={handleOpenFile}
-                    onPathRenamed={handlePathRenamed}
-                    onPathDeleted={handlePathDeleted}
-                    onRevealInTerminal={cdInNewTab}
+            rootPath={explorerRoot}
+            onOpenFile={handleOpenFile}
+            onPathRenamed={handlePathRenamed}
+            onPathDeleted={handlePathDeleted}
+            onRevealInTerminal={cdInNewTab}
+            onNavigate={handleNavigate}
                   />
                 </div>
               </ResizablePanel>

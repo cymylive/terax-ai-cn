@@ -43,6 +43,7 @@ type Props = {
   onPathRenamed?: (from: string, to: string) => void;
   onPathDeleted?: (path: string) => void;
   onRevealInTerminal?: (path: string) => void;
+  onNavigate?: (path: string) => void;
 };
 
 function basename(path: string): string {
@@ -58,6 +59,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(
       onPathRenamed,
       onPathDeleted,
       onRevealInTerminal,
+      onNavigate,
     },
     ref,
   ) => {
@@ -66,7 +68,17 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(
     const [selectedPath, setSelectedPath] = useState<string | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isSearchActive, setIsSearchActive] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
+    const pickerInitRef = useRef(false);
+
+    useEffect(() => {
+      if (fileInputRef.current && !pickerInitRef.current) {
+        pickerInitRef.current = true;
+        (fileInputRef.current as any).webkitdirectory = true;
+        (fileInputRef.current as any).directory = true;
+      }
+    }, []);
     const searchRef = useRef<ExplorerSearchHandle>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -131,6 +143,25 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(
       },
     });
   
+    const handlePickFolder = () => {
+      fileInputRef.current?.click();
+    };
+
+    const handleFolderPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        const fullPath = (files[0] as any).path;
+        if (fullPath) {
+          const dirPath = fullPath.substring(
+            0,
+            fullPath.length - files[0].webkitRelativePath.length - 1
+          );
+          onNavigate?.(dirPath.replace(/\\/g, "/"));
+        }
+      }
+      e.target.value = "";
+    };
+
     if (!rootPath) {
       return (
         <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
@@ -231,18 +262,36 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(
         <div className="flex h-8 shrink-0 items-center gap-1 border-b border-border/60 px-2">
           <span
             className="flex-1 flex truncate text-xs font-medium text-foreground/80"
-            title={rootPath}
+            title={rootPath ?? ""}
           >
             <img
-              src={folderIconUrl(basename(rootPath), false)}
+              src={folderIconUrl(basename(rootPath ?? ""), false)}
               alt=""
               height={15}
               width={15}
               className="mx-1.5"
             />
-            {basename(rootPath)}
+            {basename(rootPath ?? "")}
           </span>
-  
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            style={{ display: "none" }}
+            onChange={handleFolderPicked}
+          />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6 text-muted-foreground hover:text-foreground"
+            onClick={handlePickFolder}
+            title={t('explorer.openFolder')}
+            aria-label={t('explorer.openFolder')}
+          >
+            <HugeiconsIcon icon={Folder01Icon} size={13} strokeWidth={2} />
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"
