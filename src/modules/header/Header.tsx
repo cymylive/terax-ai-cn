@@ -6,25 +6,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { WindowControls } from "@/components/WindowControls";
-import { IS_MAC, KEY_SEP, USE_CUSTOM_WINDOW_CONTROLS } from "@/lib/platform";
-import { usePreferencesStore } from "@/modules/settings/preferences";
-import {
-  getBindingTokens,
-  SHORTCUTS,
-  type ShortcutId,
-} from "@/modules/shortcuts/shortcuts";
+import { IS_MAC, USE_CUSTOM_WINDOW_CONTROLS } from "@/lib/platform";
 import type { Tab } from "@/modules/tabs";
 import { TabBar } from "@/modules/tabs";
 import {
+  Cancel01Icon,
   GridViewIcon,
-  KeyboardIcon,
   LayoutTwoColumnIcon,
   LayoutTwoRowIcon,
+  ListViewIcon,
   Settings01Icon,
   SidebarLeftIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import {
   SearchInline,
@@ -40,19 +35,31 @@ type Props = {
   onNewPrivate: () => void;
   onNewEditor: () => void;
   onClose: (id: number) => void;
-  /** Promote a preview (transient) tab to persistent. */
   onPin: (id: number) => void;
   onToggleSidebar: () => void;
   onSplit: (dir: "row" | "col") => void;
-  /** Active tab is a terminal and below the per-tab pane cap. */
   canSplit: boolean;
-  onOpenShortcuts: () => void;
   onOpenSettings: () => void;
   searchTarget: SearchTarget;
   searchRef: RefObject<SearchInlineHandle | null>;
 };
 
 const COMPACT_WIDTH = 720;
+
+function tabIconId(tab: Tab): string {
+  if (tab.kind === "terminal" && tab.private) return "incognito";
+  if (tab.kind === "editor") return "editor";
+  return "terminal";
+}
+
+function tabLabel(tab: Tab): string {
+  if (tab.kind === "editor") return tab.title;
+  if (tab.kind === "terminal" && tab.cwd) {
+    const parts = tab.cwd.split(/[\\/]/).filter(Boolean);
+    return parts.length ? parts[parts.length - 1] : "/";
+  }
+  return tab.title;
+}
 
 export function Header({
   tabs,
@@ -66,7 +73,6 @@ export function Header({
   onToggleSidebar,
   onSplit,
   canSplit,
-  onOpenShortcuts,
   onOpenSettings,
   searchTarget,
   searchRef,
@@ -74,24 +80,6 @@ export function Header({
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
-  const userShortcuts = usePreferencesStore((s) => s.shortcuts);
-
-  const tokensFor = (id: ShortcutId): string => {
-    const s = SHORTCUTS.find((s) => s.id === id);
-    if (!s) return "";
-    const bindings = userShortcuts[id] || s.defaultBindings;
-    if (!bindings || bindings.length === 0) return "";
-    return getBindingTokens(bindings[0]).join(KEY_SEP);
-  };
-
-  const shortcutLabel = useMemo(() => {
-    const tokens = tokensFor("shortcuts.open");
-    return tokens ? t('header.keyboardShortcutsWithKey', { key: tokens }) : t('header.keyboardShortcuts');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userShortcuts]);
-
-  const splitRightTokens = tokensFor("pane.splitRight");
-  const splitDownTokens = tokensFor("pane.splitDown");
 
   useEffect(() => {
     const el = rootRef.current;
@@ -103,18 +91,6 @@ export function Header({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-
-  const shortcutsButton = (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="size-7 shrink-0 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-      onClick={onOpenShortcuts}
-      title={shortcutLabel}
-    >
-      <HugeiconsIcon icon={KeyboardIcon} size={16} strokeWidth={1.75} />
-    </Button>
-  );
 
   const settingsButton = (
     <Button
@@ -167,11 +143,6 @@ export function Header({
                 strokeWidth={1.75}
               />
               <span className="flex-1">{t('header.splitRight')}</span>
-              {splitRightTokens && (
-                <span className="text-xs text-muted-foreground">
-                  {splitRightTokens}
-                </span>
-              )}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onSplit("col")}>
               <HugeiconsIcon
@@ -180,16 +151,56 @@ export function Header({
                 strokeWidth={1.75}
               />
               <span className="flex-1">{t('header.splitDown')}</span>
-              {splitDownTokens && (
-                <span className="text-xs text-muted-foreground">
-                  {splitDownTokens}
-                </span>
-              )}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {!IS_MAC && shortcutsButton}
+        {tabs.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                title={t('header.allTabs')}
+              >
+                <HugeiconsIcon icon={ListViewIcon} size={16} strokeWidth={1.75} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-48 max-h-80 overflow-y-auto">
+              {tabs.map((tab) => {
+                const isActive = tab.id === activeId;
+                const iconId = tabIconId(tab);
+                return (
+                  <DropdownMenuItem
+                    key={tab.id}
+                    onSelect={() => onSelect(tab.id)}
+                    className={isActive ? "bg-accent font-medium" : ""}
+                  >
+                    <span className="flex-1 truncate flex items-center gap-2">
+                      <span className={`shrink-0 text-xs ${iconId === "incognito" ? "text-amber-500" : ""}`}>
+                        [{iconId === "editor" ? "E" : iconId === "incognito" ? "P" : "T"}]
+                      </span>
+                      {tabLabel(tab)}
+                    </span>
+                    {tabs.length > 1 && (
+                      <span
+                        role="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClose(tab.id);
+                        }}
+                        className="ml-2 rounded p-0.5 text-muted-foreground/50 hover:text-foreground"
+                      >
+                        <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {!IS_MAC && <span className="mx-1 h-5 w-px shrink-0 bg-border" />}
@@ -206,7 +217,7 @@ export function Header({
           onSelect={onSelect}
           onNew={onNew}
           onNewPrivate={onNewPrivate}
-           onNewEditor={onNewEditor}
+          onNewEditor={onNewEditor}
           onClose={onClose}
           onPin={onPin}
           compact={compact}
@@ -216,12 +227,7 @@ export function Header({
 
       <SearchInline ref={searchRef} target={searchTarget} compact={compact} />
 
-      {IS_MAC && (
-        <>
-          {shortcutsButton}
-          {settingsButton}
-        </>
-      )}
+      {IS_MAC && settingsButton}
 
       {!IS_MAC && settingsButton}
 

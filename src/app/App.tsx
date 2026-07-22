@@ -406,7 +406,6 @@ export default function App() {
               activeTerminalTab !== null &&
               leafIds(activeTerminalTab.paneTree).length < MAX_PANES_PER_TAB
             }
-            onOpenShortcuts={() => setShortcutsOpen(true)}
             onOpenSettings={() => void openSettingsWindow()}
             onToggleSidebar={() => {}}
             searchTarget={searchTarget}
