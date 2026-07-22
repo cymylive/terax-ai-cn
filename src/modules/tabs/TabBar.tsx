@@ -16,7 +16,7 @@ import {
   PlusSignIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { EditorTab, Tab } from "./lib/useTabs";
 
@@ -29,8 +29,11 @@ type Props = {
   onNewEditor: () => void;
   onClose: (id: number) => void;
   onPin: (id: number) => void;
+  onRename?: (id: number, title: string) => void;
   compact?: boolean;
 };
+
+const INPUT_WIDTH = 140;
 
 export function TabBar({
   tabs,
@@ -41,10 +44,31 @@ export function TabBar({
   onNewEditor,
   onClose,
   onPin,
+  onRename,
   compact,
 }: Props) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameRef = useRef<HTMLInputElement>(null);
+  const renamingValueRef = useRef("");
+
+  const commitRename = useCallback(() => {
+    if (renamingId !== null && renamingValueRef.current.trim()) {
+      onRename?.(renamingId, renamingValueRef.current.trim());
+    }
+    setRenamingId(null);
+  }, [renamingId, onRename]);
+
+  const startRename = useCallback((id: number, current: string) => {
+    setRenamingId(id);
+    setRenameValue(current);
+    renamingValueRef.current = current;
+    requestAnimationFrame(() => {
+      renameRef.current?.select();
+    });
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -80,12 +104,17 @@ export function TabBar({
           <TabsList className="h-7 w-max gap-0.5 bg-transparent p-0">
             {tabs.map((tab) => {
               const isPreview = tab.kind === "editor" && (tab as EditorTab).preview;
+              const isRenaming = renamingId === tab.id;
+              const canRename = !isPreview && (tab.kind === "terminal" || tab.kind === "editor");
               return (
                 <TabsTrigger
                   key={tab.id}
                   value={String(tab.id)}
                   data-tab-id={tab.id}
-                  onDoubleClick={() => isPreview && onPin(tab.id)}
+                  onDoubleClick={() => {
+                    if (isPreview) { onPin(tab.id); return; }
+                    if (canRename) startRename(tab.id, labelFor(tab));
+                  }}
                   className={cn(
                     "group h-7 shrink-0 gap-1.5 rounded-md text-xs text-muted-foreground transition-colors data-[state=active]:bg-accent data-[state=active]:text-foreground hover:text-foreground/80 justify-between",
                     compact
@@ -102,9 +131,29 @@ export function TabBar({
                     )}
                   >
                     <TabIcon tab={tab} />
-                    <span className={cn("truncate", isPreview && "italic")}>
-                      {labelFor(tab)}
-                    </span>
+                    {isRenaming ? (
+                      <input
+                        ref={renameRef}
+                        value={renameValue}
+                        onChange={(e) => {
+                          setRenameValue(e.target.value);
+                          renamingValueRef.current = e.target.value;
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+                          if (e.key === "Escape") { e.preventDefault(); setRenamingId(null); }
+                        }}
+                        onBlur={commitRename}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: INPUT_WIDTH }}
+                        className="h-5 rounded border border-border/60 bg-background px-1.5 text-[11px] outline-none"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className={cn("truncate", isPreview && "italic")}>
+                        {labelFor(tab)}
+                      </span>
+                    )}
                     {tab.kind === "editor" && tab.dirty ? (
                       <span
                         aria-label={t('tabs.unsavedChanges')}

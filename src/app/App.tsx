@@ -368,6 +368,11 @@ export default function App() {
     [updateTab],
   );
 
+  const handleRename = useCallback(
+    (id: number, title: string) => updateTab(id, { title }),
+    [updateTab],
+  );
+
   const searchTarget = useMemo<SearchTarget>(() => {
     if (isTerminalTab && activeSearchAddon)
       return {
@@ -401,6 +406,7 @@ export default function App() {
             onNewEditor={() => setNewEditorOpen(true)}
             onClose={handleClose}
             onPin={pinTab}
+            onRename={handleRename}
             onSplit={splitActivePaneInActiveTab}
             canSplit={
               activeTerminalTab !== null &&

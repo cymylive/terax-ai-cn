@@ -36,6 +36,7 @@ type Props = {
   onNewEditor: () => void;
   onClose: (id: number) => void;
   onPin: (id: number) => void;
+  onRename?: (id: number, title: string) => void;
   onToggleSidebar: () => void;
   onSplit: (dir: "row" | "col") => void;
   canSplit: boolean;
@@ -70,6 +71,7 @@ export function Header({
   onNewEditor,
   onClose,
   onPin,
+  onRename,
   onToggleSidebar,
   onSplit,
   canSplit,
@@ -220,6 +222,7 @@ export function Header({
           onNewEditor={onNewEditor}
           onClose={onClose}
           onPin={onPin}
+          onRename={onRename}
           compact={compact}
         />
         <div data-tauri-drag-region className="h-full min-w-2 flex-1" />
