@@ -199,14 +199,26 @@ html[data-chrome="borderless"] #settings-root {
 
 .cm-editor,
 .cm-scroller {
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
 }
 .cm-editor::-webkit-scrollbar,
 .cm-scroller::-webkit-scrollbar {
-  width: 0 !important;
-  height: 0 !important;
-  display: none !important;
+  width: 8px;
+  height: 8px;
+}
+.cm-editor::-webkit-scrollbar-track,
+.cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cm-editor::-webkit-scrollbar-thumb,
+.cm-scroller::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+.cm-editor::-webkit-scrollbar-thumb:hover,
+.cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground) / 0.3);
 }
 
 
